@@ -15,22 +15,27 @@ for (lib in libraries_to_install)
   install.packages(lib, dependences = TRUE)
 sapply(load.libraries, require, character = TRUE)
 
-install.packages("SentimentAnalysis")
 q <- "Tesla"
 filename = "out.txt"
+
+#read tweets
 
 tesla_tweets <- search_tweets(q = "Tesla", n = 10000,
                                lang = "en",
                                include_rts = FALSE)
 
+#data cleaning
+
+tesla_tweets$text <- gsub("@[[:alpha:]]*","", tesla_tweets$text)
+
 tesla_tweets$text <- gsub("http.*","",  tesla_tweets$text)
 tesla_tweets$text <- gsub("https.*","", tesla_tweets$text)
 
 text_corpus <- Corpus(VectorSource(tesla_tweets$text))
+
 text_corpus <- tm_map(text_corpus, tolower)
 text_corpus <- tm_map(text_corpus, removeWords, 
                       c("rt", "re", "amp"))
-
 
 text_corpus <- tm_map(text_corpus, removeWords, 
                       stopwords("english"))
@@ -43,10 +48,14 @@ text_df <- data.frame(text_clean = get("content", text_corpus),
 
 tesla_tweets <- cbind.data.frame(tesla_tweets, text_df)
 
-
-
-
-
+##sentiment analysis
 
 tesla_sentiment <- analyzeSentiment(tesla_tweets$text_clean)
+tesla_sentiment <- dplyr::select(tesla_sentiment, 
+                                 SentimentGI, SentimentHE,
+                                 SentimentLM, SentimentQDAP, 
+                                 WordCount)
 
+
+tesla_sentiment <- dplyr::mutate(tesla_sentiment, 
+                                 ang_sentiment = rowMeans(tesla_sentiment[,-5]))
